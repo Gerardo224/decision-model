@@ -76,7 +76,7 @@ def pagina_inicio():
         st.markdown(
             "<div class='perfil-caja'>"
             "<h3 style='text-align:center;'>Perfil Básico</h3>"
-            "<p>En este modo, compararás cuatro criterios fijos (Rentabilidad, Riesgo, Liquidez y Comisiones) y obtendrás recomendaciones basadas en datos históricos pre-cargados.</p>"
+            "<p>En este modo, compararás cuatro criterios fijos (Rentabilidad, Riesgo, Liquidez y Horizonte temporal) y obtendrás recomendaciones basadas en datos históricos pre-cargados.</p>"
             "</div><br>",
             unsafe_allow_html=True
         )
