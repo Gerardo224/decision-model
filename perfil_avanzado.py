@@ -1,4 +1,3 @@
-# perfil_avanzado.py
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -6,7 +5,7 @@ import plotly.express as px
 
 
 def run_avanzado():
-    st.header("🚀 Perfil Avanzado – AHP Dinámico con Detalles de Cálculo")
+    st.header("🚀 Perfil Avanzado – AHP Dinámico sin Tablas Intermedias")
 
     # Selección de criterios y alternativas
     todos_crit = ["Rentabilidad","Riesgo","Liquidez","Comisiones","Horizonte"]
@@ -18,97 +17,77 @@ def run_avanzado():
         st.warning("Selecciona al menos 2 criterios y 2 alternativas para continuar.")
         return
 
-    # -------------------------
     # 1) Comparación AHP de criterios
-    # -------------------------
-    st.subheader("1) Matriz de comparación de criterios")
+    st.subheader("1) Comparación de criterios")
     n = len(criterios)
     Mc = np.ones((n, n))
-
-    # Rellenar la parte superior de la matriz con inputs
     for i in range(n):
         for j in range(i+1, n):
             c_i, c_j = criterios[i], criterios[j]
-            st.markdown(f"**Criterio {i+1} vs {j+1}: {c_i} vs {c_j}**")
+            st.markdown(f"**{c_i} vs {c_j}**")
             choice = st.radio("¿Qué criterio es más importante?", [c_i, c_j], key=f"crit_pref_{i}_{j}", horizontal=True)
-            intensidad = st.slider("Intensidad (1=igual, 9=muy fuerte)", 1, 9, 1, key=f"crit_int_{i}_{j}")
+            intensidad = st.slider("Indique la intensidad de la preferencia (1=igual, 9=muy fuerte)", 1, 9, 1, key=f"crit_int_{i}_{j}")
             if choice == c_i:
                 Mc[i, j], Mc[j, i] = intensidad, 1/intensidad
             else:
                 Mc[i, j], Mc[j, i] = 1/intensidad, intensidad
 
-    # Mostrar matriz cruda
-    df_Mc = pd.DataFrame(Mc, index=criterios, columns=criterios)
-    st.write("**Matriz comparativa de criterios**")
-    st.dataframe(df_Mc)
+    # Cálculo de pesos de criterios
+    pesos_crit = (Mc / Mc.sum(axis=0)).mean(axis=1)
 
-    # Normalización por columnas y cálculo de pesos
-    col_sum = Mc.sum(axis=0)
-    Mc_norm = Mc / col_sum
-    df_Mc_norm = pd.DataFrame(Mc_norm, index=criterios, columns=criterios)
-    st.write("**Matriz de criterios normalizada (dividiendo por suma de columnas)**")
-    st.dataframe(df_Mc_norm)
-
-    pesos_crit = Mc_norm.mean(axis=1)
-    df_pesos_crit = pd.DataFrame({"Peso criterio": pesos_crit}, index=criterios)
-    st.write("**Pesos de cada criterio (promedio de filas)**")
-    st.dataframe(df_pesos_crit)
-
-    # -------------------------
-    # 2) Comparación AHP de alternativas para cada criterio
-    # -------------------------
-    st.subheader("2) Matrices AHP de alternativas por criterio")
+    # 2) Comparación AHP de alternativas
+    st.subheader("2) Comparación de alternativas")
     m = len(alternativas)
     pesos_alt = {}
-
     for ci, crit in enumerate(criterios):
-        st.markdown(f"---\n### Matriz para el criterio: {crit}")
+        st.markdown(f"### {crit}")
         Ma = np.ones((m, m))
         for i in range(m):
             for j in range(i+1, m):
                 a_i, a_j = alternativas[i], alternativas[j]
                 st.markdown(f"**{a_i} vs {a_j}**")
                 choice_a = st.radio("¿Cuál alternativa es mejor?", [a_i, a_j], key=f"alt_pref_{crit}_{i}_{j}", horizontal=True)
-                val = st.slider("Intensidad (1-9)", 1, 9, 1, key=f"alt_int_{crit}_{i}_{j}")
+                val = st.slider("Indique la intensidad de la preferencia (1-9)", 1, 9, 1, key=f"alt_int_{crit}_{i}_{j}")
                 if choice_a == a_i:
                     Ma[i, j], Ma[j, i] = val, 1/val
                 else:
                     Ma[i, j], Ma[j, i] = 1/val, val
+        # Pesos locales
+        pesos_alt[crit] = (Ma / Ma.sum(axis=0)).mean(axis=1)
 
-        # Mostrar matriz cruda de alternativas
-        df_Ma = pd.DataFrame(Ma, index=alternativas, columns=alternativas)
-        st.write(f"**Matriz comparativa cruda para {crit}**")
-        st.dataframe(df_Ma)
-
-        # Normalizar por columnas y pesos locales
-        sum_cols = Ma.sum(axis=0)
-        Ma_norm = Ma / sum_cols
-        df_Ma_norm = pd.DataFrame(Ma_norm, index=alternativas, columns=alternativas)
-        st.write(f"**Matriz normalizada para {crit}**")
-        st.dataframe(df_Ma_norm)
-
-        pesos_loc = Ma_norm.mean(axis=1)
-        pesos_alt[crit] = pesos_loc
-        df_pesos_loc = pd.DataFrame({f"Peso local ({crit})": pesos_loc}, index=alternativas)
-        st.write(f"**Pesos locales para {crit} (promedio de filas)**")
-        st.dataframe(df_pesos_loc)
-
-    # -------------------------
-    # 3) Agregación de resultados y puntuación final
-    # -------------------------
-    st.subheader("3) Agregación y score final de alternativas")
+    # 3) Agregación y puntuación final
+    st.subheader("3) Ranking final de alternativas")
     df_final = pd.DataFrame({"Alternativa": alternativas})
     total_score = np.zeros(m)
     for ci, crit in enumerate(criterios):
         df_final[crit] = pesos_alt[crit]
         total_score += pesos_crit[ci] * pesos_alt[crit]
-
     df_final["Score"] = total_score
-    df_final = df_final.set_index("Alternativa")[ [*criterios, "Score"] ]
-    st.write("**Tabla final con scores and desglose de pesos**")
-    st.dataframe(df_final)
+    df_final = df_final.set_index("Alternativa")
 
-    # Mostrar ranking
-    st.success(f"La mejor alternativa es **{df_final['Score'].idxmax()}** con score {df_final['Score'].max():.4f}")
-    fig = px.bar(df_final.sort_values("Score", ascending=False).reset_index(), x="Alternativa", y="Score", title="Ranking final de alternativas", text_auto=".4f")
-    st.plotly_chart(fig, use_container_width=True)
+    # Mostrar resultado y gráficos
+    mejor = df_final['Score'].idxmax()
+    valor = df_final['Score'].max()
+    st.success(f"La mejor alternativa es **{mejor}** con score {valor:.4f}")
+
+    # Visualización en columnas
+    col1, col2 = st.columns(2)
+    # Gráfico de barras
+    fig_bar = px.bar(
+        df_final.sort_values("Score", ascending=False).reset_index(),
+        x="Alternativa", y="Score", title="Ranking final de alternativas", text_auto=".4f", template="plotly_white"
+    )
+    fig_bar.update_layout(
+        paper_bgcolor='white', plot_bgcolor='white', font=dict(color='black'), title_font=dict(color='black')
+    )
+    with col1:
+        st.plotly_chart(fig_bar, use_container_width=True)
+    # Gráfico de tarta
+    fig_pie = px.pie(
+        df_final.reset_index(), names="Alternativa", values="Score", title="Distribución de Score", template="plotly_white"
+    )
+    fig_pie.update_layout(
+        paper_bgcolor='white', plot_bgcolor='white', font=dict(color='black'), title_font=dict(color='black')
+    )
+    with col2:
+        st.plotly_chart(fig_pie, use_container_width=True)
