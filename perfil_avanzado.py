@@ -5,7 +5,7 @@ import plotly.express as px
 
 
 def run_avanzado():
-    st.header("🚀 Perfil Avanzado – AHP Dinámico sin Tablas Intermedias")
+    st.header("🚀 Perfil Avanzado – AHP Dinámico")
 
     # Selección de criterios y alternativas
     todos_crit = ["Rentabilidad","Riesgo","Liquidez","Comisiones","Horizonte"]
