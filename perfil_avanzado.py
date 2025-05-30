@@ -3,9 +3,11 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-
 def run_avanzado():
     st.header("🚀 Perfil Avanzado – AHP Dinámico")
+
+    # Llista de criteris negatius (menys és millor)
+    criterios_negativos = ["Riesgo", "Comisiones", "Horizonte"]
 
     # Selección de criterios y alternativas
     todos_crit = ["Rentabilidad","Riesgo","Liquidez","Comisiones","Horizonte"]
@@ -48,11 +50,21 @@ def run_avanzado():
                 st.markdown(f"**{a_i} vs {a_j}**")
                 choice_a = st.radio("¿Cuál alternativa es mejor?", [a_i, a_j], key=f"alt_pref_{crit}_{i}_{j}", horizontal=True)
                 val = st.slider("Indique la intensidad de la preferencia (1-9)", 1, 9, 1, key=f"alt_int_{crit}_{i}_{j}")
-                if choice_a == a_i:
-                    Ma[i, j], Ma[j, i] = val, 1/val
+
+                if crit in criterios_negativos:
+                    # Invertir la lògica per criteris negatius
+                    if choice_a == a_i:
+                        Ma[i, j], Ma[j, i] = 1/val, val
+                    else:
+                        Ma[i, j], Ma[j, i] = val, 1/val
                 else:
-                    Ma[i, j], Ma[j, i] = 1/val, val
-        # Pesos locales
+                    # Criteri positiu (com Rentabilitat o Liquiditat)
+                    if choice_a == a_i:
+                        Ma[i, j], Ma[j, i] = val, 1/val
+                    else:
+                        Ma[i, j], Ma[j, i] = 1/val, val
+
+        # Pesos locals
         pesos_alt[crit] = (Ma / Ma.sum(axis=0)).mean(axis=1)
 
     # 3) Agregación y puntuación final
@@ -72,7 +84,7 @@ def run_avanzado():
 
     # Visualización en columnas
     col1, col2 = st.columns(2)
-    # Gráfico de barras
+
     fig_bar = px.bar(
         df_final.sort_values("Score", ascending=False).reset_index(),
         x="Alternativa", y="Score", title="Ranking final de alternativas", text_auto=".4f", template="plotly_white"
@@ -82,7 +94,7 @@ def run_avanzado():
     )
     with col1:
         st.plotly_chart(fig_bar, use_container_width=True)
-    # Gráfico de tarta
+
     fig_pie = px.pie(
         df_final.reset_index(), names="Alternativa", values="Score", title="Distribución de Score", template="plotly_white"
     )
